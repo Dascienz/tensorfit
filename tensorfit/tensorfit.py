@@ -3,7 +3,7 @@ import re
 import numpy as np
 import collections
 import tensorflow as tf
-from .utils import r2_score
+from .utils import r2_score, prepare_data
 
 if not hasattr(tf, "placeholder"):
     import tensorflow.compat.v1 as tf
@@ -39,7 +39,7 @@ class TensorFunction(object):
         exec(byte_code)
         return
 
-    def initialize(self, func: str, params: dict) -> object:
+    def initialize(self, func: str, params: dict) -> None:
         """ Initialize Function Parameters. """
         if self.Function is not None:
             raise TypeError("TensorFunction has already been initialized. Please reset before initializing again.")
@@ -48,37 +48,19 @@ class TensorFunction(object):
         if not self.Fitted:
             self._set_parameters(params)
             self._set_function(func)
-        return self
-
-    def reset(self) -> object:
-        """ Reset attributes. """
-        for k, v in self.__dict__.copy().items():
-            if isinstance(v, tf.Variable):
-                del self.__dict__[k]
-        self.Fitted = False
-        self.Function = None
-        self.X = tf.placeholder(dtype=tf.float32)
-        self.Y = tf.placeholder(dtype=tf.float32)
-        self.Params = {}
-        self.Summary = {}
-        return self
+        return
 
     def fit(self, x: np.ndarray, y: np.ndarray, metric: str = "mse", learning_rate: float = 0.01,
-            num_rounds: int = 100, early_stopping_rounds: int = 0, verbose_eval: int = 0) -> object:
+            num_rounds: int = 100, early_stopping_rounds: int = 0, verbose_eval: int = 0) -> None:
         """ Fit TensorFunction to array-like data. """
         if self.Fitted:
             raise ValueError(
                 "TensorFunction has been fitted already. Please reset and initialize before fitting again.")
-        try:
-            x = np.array(x, dtype=np.float32)
-            y = np.array(y, dtype=np.float32)
-            assert x.ndim == y.ndim == 1
-            assert x.shape[0] == y.shape[0]
-        except Exception as e:
-            raise ValueError("x and y must be array-like objects: {0}".format(e))
 
         if self.Function is None:
             raise ValueError("TensorFunction has not been initialized. Please initialize before fitting.")
+
+        x, y = prepare_data(x, y)
 
         if metric == "mse":
             loss = tf.reduce_mean(tf.square(self.Y - self.Function))
@@ -86,27 +68,31 @@ class TensorFunction(object):
             raise ValueError("'{0}' is not a valid error metric.".format(metric))
 
         train = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+        stopping_rounds = int(early_stopping_rounds)
 
-        if 1 < int(early_stopping_rounds) < 1000:
-            print("Fitting until error does not improve for {0} rounds.".format(int(early_stopping_rounds)))
-            error_rounds = collections.deque(maxlen=int(early_stopping_rounds))
+        if 1 < stopping_rounds < 1000:
+            print("Fitting until error does not improve for {0} rounds.".format(stopping_rounds))
+            error_rounds = collections.deque(maxlen=stopping_rounds)
         else:
             error_rounds = None
 
         with tf.Session() as sess:
             tf.global_variables_initializer().run()
+
             for episode in range(int(num_rounds)):
                 sess.run(train, feed_dict={self.X: x, self.Y: y})
                 error = sess.run(loss, feed_dict={self.X: x, self.Y: y})
+
                 if verbose_eval > 0 and episode % verbose_eval == 0:
                     print("[Episode - {0}] {1}: {2:,.8f}".format(episode, metric, error))
+
                 if error_rounds is not None:
                     error_rounds.append(error)
-                    if len(error_rounds) == int(early_stopping_rounds):
+
+                    if len(error_rounds) == stopping_rounds:
                         if all(e == error_rounds[0] for e in error_rounds):
                             print("Early stopping, best iteration is:")
-                            print("[Episode - {0}] {1}: {2:,.8f}".format(
-                                episode - int(early_stopping_rounds), metric, error))
+                            print("[Episode - {0}] {1}: {2:,.8f}".format(episode - stopping_rounds, metric, error))
                             break
 
             for k, v in self.__dict__.copy().items():
@@ -115,5 +101,19 @@ class TensorFunction(object):
 
             self.Summary[metric] = sess.run(loss, feed_dict={self.X: x, self.Y: y})
             self.Summary["r2"] = r2_score(y=y, yhat=sess.run(self.Function, feed_dict={self.X: x, self.Y: y}))
-        self.Fitted = True
-        return self
+            self.Fitted = True
+        return
+
+    def reset(self) -> None:
+        """ Reset attributes. """
+        for k, v in self.__dict__.copy().items():
+            if isinstance(v, tf.Variable):
+                del self.__dict__[k]
+
+        self.Fitted = False
+        self.Function = None
+        self.X = tf.placeholder(dtype=tf.float32)
+        self.Y = tf.placeholder(dtype=tf.float32)
+        self.Params = {}
+        self.Summary = {}
+        return

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from .lib import TensorFunction
-
+from .tensorfit import TensorFunction
 
 __all__ = ["TensorFunction"]
