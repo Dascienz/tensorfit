@@ -10,12 +10,14 @@ with open(os.path.join(os.path.dirname(__file__), "README.md"), "r") as f:
 
 setup(
     name="tensorfit",
-    version="0.0.5",
+    packages=["tensorfit"],
+    version="0.0.8",
     description="Python package for univariate curve fitting using TensorFlow.",
     author="David Ascienzo",
     author_email="dascienz@gmail.com",
     url="https://github.com/dascienz/tensorfit",
-    keywords="curve fitting linear nonlinear regression parametric machine learning tensorflow",
+    keywords=[
+        "curve", "fitting", "linear", "nonlinear", "regression", "parametric", "machine", "learning", "tensorflow"],
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT",
