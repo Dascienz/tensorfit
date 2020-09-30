@@ -10,7 +10,7 @@ with open(os.path.join(os.path.dirname(__file__), "README.md"), "r") as f:
 
 setup(
     name="tensorfit",
-    version="0.0.2",
+    version="0.0.4",
     description="Python package for univariate curve fitting using TensorFlow.",
     author="David Ascienzo",
     author_email="dascienz@gmail.com",
