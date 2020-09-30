@@ -32,7 +32,7 @@ Create and initialize TensorFunction instance using a parametric model for your 
 ```
 
 After initialization, you can make a call to `.fit()` to fit your `TensorFunction()` to the experimental data.
-```
+```python
 >>> tfunc.fit(x, y, num_rounds=10000, early_stopping_rounds=10, verbose_eval=0)
 Early stopping, best iteration is:
 [Episode - 6046] mse: 0.81566346
